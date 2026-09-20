@@ -338,7 +338,7 @@ result = {{
     "points_redeemed": int(points_redeemed),
     "points_discount": points_discount,
     "tier": tier,
-    "tier_rate": tier_rate,
+    "tier_discount_pct": tier_rate,
     "tier_discount": tier_discount,
     "subtotal_after_points": subtotal_after_points,
     "final_total": final_total,
