@@ -5,3 +5,9 @@ __pycache__/
 
 # UV
 uv.lock
+
+# AgentCore build cache
+.bedrock_agentcore/
+
+# Secrets
+.env
