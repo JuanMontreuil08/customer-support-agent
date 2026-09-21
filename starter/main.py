@@ -425,20 +425,38 @@ async def invoke(payload, context=None):
 
         tools = [search_knowledge_base, calculate_loyalty_discount, agent_core_browser.browser]
 
-        mcp_client = MCPClient(lambda: streamable_http_client(GATEWAY_URL))
-        mcp_client.start()
-        gateway_tools = mcp_client.list_tools_sync()
-        tools.extend(gateway_tools)
+        gateway_client = MCPClient(lambda: streamable_http_client(GATEWAY_URL))
 
-        agent = Agent(
-            model=model,
-            tools=tools,
-            hooks=[memory_hook],
-            system_prompt=SYSTEM_PROMPT,
-        )
+        with gateway_client:
+            try:
+                gateway_tools = gateway_client.list_tools_sync()
+                tools.extend(gateway_tools)
 
-        response = agent(user_input)
-        return response.message["content"][0]["text"]
+                logger.info(
+                    "Gateway connected successfully. Loaded %d tools.",
+                    len(gateway_tools),
+                )
+
+            except TimeoutError:
+                logger.exception("Gateway tool loading timed out — continuing without Gateway tools.")
+
+            except ConnectionError:
+                logger.exception("Gateway connection failed — continuing without Gateway tools.")
+
+            except Exception as exc:
+                logger.exception(
+                    "Gateway tool loading failed: %s — continuing without Gateway tools.", exc
+                )
+
+            agent = Agent(
+                model=model,
+                tools=tools,
+                hooks=[memory_hook],
+                system_prompt=SYSTEM_PROMPT,
+            )
+
+            response = agent(user_input)
+            return response.message["content"][0]["text"]
 
     except Exception as e:
         logger.error(f"Agent invocation failed: {e}")
