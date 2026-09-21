@@ -427,8 +427,8 @@ async def invoke(payload, context=None):
 
         gateway_client = MCPClient(lambda: streamable_http_client(GATEWAY_URL))
 
-        with gateway_client:
-            try:
+        try:
+            with gateway_client:
                 gateway_tools = gateway_client.list_tools_sync()
                 tools.extend(gateway_tools)
 
@@ -437,26 +437,36 @@ async def invoke(payload, context=None):
                     len(gateway_tools),
                 )
 
-            except TimeoutError:
-                logger.exception("Gateway tool loading timed out — continuing without Gateway tools.")
-
-            except ConnectionError:
-                logger.exception("Gateway connection failed — continuing without Gateway tools.")
-
-            except Exception as exc:
-                logger.exception(
-                    "Gateway tool loading failed: %s — continuing without Gateway tools.", exc
+                agent = Agent(
+                    model=model,
+                    tools=tools,
+                    hooks=[memory_hook],
+                    system_prompt=SYSTEM_PROMPT,
                 )
 
-            agent = Agent(
-                model=model,
-                tools=tools,
-                hooks=[memory_hook],
-                system_prompt=SYSTEM_PROMPT,
+                response = agent(user_input)
+                return response.message["content"][0]["text"]
+
+        except TimeoutError:
+            logger.exception("Gateway tool loading timed out — continuing without Gateway tools.")
+
+        except ConnectionError:
+            logger.exception("Gateway connection failed — continuing without Gateway tools.")
+
+        except Exception as exc:
+            logger.exception(
+                "Gateway tool loading failed: %s — continuing without Gateway tools.", exc
             )
 
-            response = agent(user_input)
-            return response.message["content"][0]["text"]
+        agent = Agent(
+            model=model,
+            tools=tools,
+            hooks=[memory_hook],
+            system_prompt=SYSTEM_PROMPT,
+        )
+
+        response = agent(user_input)
+        return response.message["content"][0]["text"]
 
     except Exception as e:
         logger.error(f"Agent invocation failed: {e}")
